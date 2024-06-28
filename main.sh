@@ -1,75 +1,104 @@
-#!/bin/bash
-# shellcheck shell=bash
-# shellcheck disable=SC2068
-PATH=${PATH}:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
-export PATH
-#
-# ——————————————————————————————————————————————————————————————————————————————————
-# __   ___                                    _ _     _
-# \ \ / (_)                             /\   | (_)   | |
-#  \ V / _  __ _  ___  _   _  __ _     /  \  | |_ ___| |_
-#   > < | |/ _` |/ _ \| | | |/ _` |   / /\ \ | | / __| __|
-#  / . \| | (_| | (_) | |_| | (_| |  / ____ \| | \__ \ |_
-# /_/ \_\_|\__,_|\___/ \__, |\__,_| /_/    \_\_|_|___/\__|
-#                       __/ |
-#                      |___/
-#
-# Copyright (c) 2024 DDSRem <https://blog.ddsrem.com>
-#
-# This is free software, licensed under the Mit License.
-#
-# ——————————————————————————————————————————————————————————————————————————————————
+if [ -d /etc/xiaoya/mytoken.txt ]; then
+	rm -rf /etc/xiaoya/mytoken.txt
+fi
+mkdir -p /etc/xiaoya/data
+touch /etc/xiaoya/mytoken.txt
+touch /etc/xiaoya/myopentoken.txt
+touch /etc/xiaoya/temp_transfer_folder_id.txt
 
-Green="\033[32m"
-Red="\033[31m"
-Yellow='\033[33m'
-Font="\033[0m"
-INFO="[${Green}INFO${Font}]"
-ERROR="[${Red}ERROR${Font}]"
-WARN="[${Yellow}WARN${Font}]"
-function INFO() {
-    echo -e "${INFO} ${1}"
-}
-function ERROR() {
-    echo -e "${ERROR} ${1}"
-}
-function WARN() {
-    echo -e "${WARN} ${1}"
-}
-if [[ $EUID -ne 0 ]]; then
-    ERROR '此脚本必须以 root 身份运行！'
-    exit 1
-fi
-if [ -f /tmp/xiaoya_install.sh ]; then
-    rm -rf /tmp/xiaoya_install.sh
-fi
-if [ -n "${XIAOYA_BRANCH}" ]; then
-    if ! curl -sL "https://fastly.jsdelivr.net/gh/DDS-Derek/xiaoya-alist@${XIAOYA_BRANCH}/all_in_one.sh" -o /tmp/xiaoya_install.sh; then
-        if ! curl -sL "https://raw.githubusercontent.com/DDS-Derek/xiaoya-alist/${XIAOYA_BRANCH}/all_in_one.sh" -o /tmp/xiaoya_install.sh; then
-            ERROR "脚本获取失败！"
-            exit 1
+mytokenfilesize=$(cat /etc/xiaoya/mytoken.txt)
+mytokenstringsize=${#mytokenfilesize}
+if [ $mytokenstringsize -le 31 ]; then
+	echo -e "\033[32m"
+	read -p "输入你的阿里云盘 Token（32位长）: " token
+	token_len=${#token}
+	if [ $token_len -ne 32 ]; then
+		echo "长度不对,阿里云盘 Token是32位长"
+		echo -e "安装停止，请参考指南配置文件\nhttps://xiaoyaliu.notion.site/xiaoya-docker-69404af849504fa5bcf9f2dd5ecaa75f \n"
+		echo -e "\033[0m"
+		exit
+	else	
+		echo $token > /etc/xiaoya/mytoken.txt
+	fi
+	echo -e "\033[0m"
+fi	
+
+myopentokenfilesize=$(cat /etc/xiaoya/myopentoken.txt)
+myopentokenstringsize=${#myopentokenfilesize}
+if [ $myopentokenstringsize -le 279 ]; then
+	echo -e "\033[33m"
+        read -p "输入你的阿里云盘 Open Token（335位长）: " opentoken
+	opentoken_len=${#opentoken}
+        if [[ $opentoken_len -le 334 ]]; then
+                echo "长度不对,阿里云盘 Open Token是335位"
+		echo -e "安装停止，请参考指南配置文件\nhttps://xiaoyaliu.notion.site/xiaoya-docker-69404af849504fa5bcf9f2dd5ecaa75f \n"
+		echo -e "\033[0m"
+                exit
         else
-            bash /tmp/xiaoya_install.sh $@
-        fi
-    else
-        bash /tmp/xiaoya_install.sh $@
-    fi
+        	echo $opentoken > /etc/xiaoya/myopentoken.txt
+	fi
+	echo -e "\033[0m"
+fi
+
+folderidfilesize=$(cat /etc/xiaoya/temp_transfer_folder_id.txt)
+folderidstringsize=${#folderidfilesize}
+if [ $folderidstringsize -le 39 ]; then
+	echo -e "\033[36m"
+        read -p "输入你的阿里云盘转存目录folder id: " folderid
+	folder_id_len=${#folderid}
+	if [ $folder_id_len -ne 40 ]; then
+                echo "长度不对,阿里云盘 folder id是40位长"
+		echo -e "安装停止，请参考指南配置文件\nhttps://xiaoyaliu.notion.site/xiaoya-docker-69404af849504fa5bcf9f2dd5ecaa75f \n"
+		echo -e "\033[0m"
+                exit
+        else
+        	echo $folderid > /etc/xiaoya/temp_transfer_folder_id.txt
+	fi	
+	echo -e "\033[0m"
+fi
+
+#echo "new" > /etc/xiaoya/show_my_ali.txt
+if command -v ifconfig &> /dev/null; then
+        localip=$(ifconfig -a|grep inet|grep -v 172.17 | grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1)
 else
-    if ! curl -sL https://ddsrem.com/xiaoya/all_in_one.sh -o /tmp/xiaoya_install.sh; then
-        if ! curl -sL https://fastly.jsdelivr.net/gh/DDS-Derek/xiaoya-alist@latest/all_in_one.sh -o /tmp/xiaoya_install.sh; then
-            if ! curl -sL https://raw.githubusercontent.com/DDS-Derek/xiaoya-alist/master/all_in_one.sh -o /tmp/xiaoya_install.sh; then
-                ERROR "脚本获取失败！"
-                exit 1
-            else
-                bash /tmp/xiaoya_install.sh $@
-            fi
-        else
-            bash /tmp/xiaoya_install.sh $@
-        fi
-    else
-        bash /tmp/xiaoya_install.sh $@
+        localip=$(ip address|grep inet|grep -v 172.17 | grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:"|head -n1|cut -f1 -d"/")
+fi
+
+if [ $1 ]; then
+    if [ $1 == 'host' ]; then
+	if [ ! -s /etc/xiaoya/docker_address.txt ]; then
+		echo "http://$localip:63944" > /etc/xiaoya/docker_address.txt
+	fi	
+	docker stop xiaoya 2>/dev/null
+	docker rm xiaoya 2>/dev/null
+	docker stop xiaoya-hostmode 2>/dev/null
+	docker rm xiaoya-hostmode 2>/dev/null
+	docker rmi xiaoyaliu/alist:hostmode
+	docker pull xiaoyaliu/alist:hostmode
+	if [[ -f /etc/xiaoya/proxy.txt ]] && [[ -s /etc/xiaoya/proxy.txt ]]; then
+        	proxy_url=$(head -n1 /etc/xiaoya/proxy.txt)
+		docker create  --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" --network=host -v /etc/xiaoya:/data -v /etc/xiaoya/data:/www/data --restart=always --name=xiaoya xiaoyaliu/alist:hostmode
+	else	
+		docker create  --network=host -v /etc/xiaoya:/data -v /etc/xiaoya/data:/www/data --restart=always --name=xiaoya xiaoyaliu/alist:hostmode
+	fi	
+	docker start xiaoya
+	exit
     fi
 fi
-if [ -f /tmp/xiaoya_install.sh ]; then
-    rm -rf /tmp/xiaoya_install.sh
+
+if [ ! -s /etc/xiaoya/docker_address.txt ]; then
+        echo "http://$localip:22444" > /etc/xiaoya/docker_address.txt
 fi
+docker stop xiaoya 2>/dev/null
+docker rm xiaoya 2>/dev/null
+docker rmi xiaoyaliu/alist:latest 
+docker pull xiaoyaliu/alist:latest
+if [[ -f /etc/xiaoya/proxy.txt ]] && [[ -s /etc/xiaoya/proxy.txt ]]; then
+	proxy_url=$(head -n1 /etc/xiaoya/proxy.txt)
+       	docker create  -p 22444:80 -p 22445:22445 -p 22446:22446 --env HTTP_PROXY="$proxy_url" --env HTTPS_PROXY="$proxy_url" --env no_proxy="*.aliyundrive.com" -v /etc/xiaoya:/data -v /etc/xiaoya/data:/www/data --restart=always --name=xiaoya xiaoyaliu/alist:latest
+else
+	docker create  -p 22444:80 -p 22445:22445 -p 22446:22446 -v /etc/xiaoya:/data -v /etc/xiaoya/data:/www/data --restart=always --name=xiaoya xiaoyaliu/alist:latest
+fi	
+
+bash -c "$(curl --ipv4 -sSL http://docker.xiaoya.pro/update_data.sh)" -s --no-upgrade
+docker start xiaoya
